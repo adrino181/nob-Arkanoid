@@ -113,8 +113,11 @@ fn main() {
         if rl.is_key_pressed(KEY_SPACE) {
             pause = !pause;
         }
-        if rl.is_key_pressed(KeyboardKey::KEY_RIGHT) {
+        if rl.is_key_pressed(KeyboardKey::KEY_RIGHT) || rl.is_key_down(KeyboardKey::KEY_RIGHT) {
             bar.position.x += 10.0;
+        }
+        if rl.is_key_pressed(KeyboardKey::KEY_LEFT) || rl.is_key_down(KeyboardKey::KEY_LEFT) {
+            bar.position.x -= 10.0;
         }
         if !pause {
             ball.position += ball.speed;
@@ -134,21 +137,24 @@ fn main() {
         let mut d: RaylibDrawHandle<'_> = rl.begin_drawing(&thread);
         let rect = Rectangle::new(bar.position.x, bar.position.y, bar.width, bar.height);
 
-        let brick_render = Rectangle::new(
-            brick.position.x,
-            brick.position.y,
-            brick.width,
-            brick.height,
-        );
         d.clear_background(Color::BEIGE);
         d.draw_circle_v(ball.position, ball.radius, Color::PINK);
         d.draw_rectangle_rec(&rect, color::Color::YELLOW);
 
         let mut wall_count: i32 = 10;
+        let mut prev_pos = Vector2 { x: 0.0, y: 0.0 };
         while wall_count > 0 {
+            let new_pos = Vector2 {
+                x: brick.position.x + prev_pos.x + 10.0,
+                y: brick.position.y + prev_pos.y + 10.0,
+            };
+            let brick_render = Rectangle::new(new_pos.x, new_pos.y, brick.width, brick.height);
+            // brick.position.x = brick.position.x + 10.0;
             d.draw_rectangle_rec(&brick_render, color::Color::BLACK);
             wall_count = wall_count - 1;
+            prev_pos = new_pos;
         }
+
         d.draw_text(
             "Press SPACE to pause ball movement",
             10,
