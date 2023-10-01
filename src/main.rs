@@ -1,4 +1,8 @@
+use std::collections::VecDeque;
+use std::vec;
+
 use raylib::ffi::KeyboardKey::KEY_SPACE;
+use raylib::ffi::LoadImageFromMemory;
 use raylib::prelude::*;
 
 const SCREEN_WIDTH: f32 = 640.0;
@@ -21,18 +25,34 @@ pub trait BreakOnCollision {
     fn break_wall(&mut self);
 }
 
+pub trait ClubHorizontal {
+    fn club(&mut self);
+}
+
 impl BreakOnCollision for Brick {
     fn break_wall(&mut self) {
         if self.is_visible {
             self.is_visible = !self.is_visible;
         }
     }
+
+    fn destory(&self) {}
 }
 
-struct Wall {
-    wall: Vec<Brick>,
-    position: Vector2,
-}
+// struct Wall {
+//     pub brick_container: Vec<Brick>,
+//     position: Vector2,
+// }
+
+// trait Wall {
+//     fn build_wall(&mut self) -> Vec<Brick> {
+//         return Vec<>
+//     }
+
+// fh check_collision(){
+//     true
+// }
+// }
 
 pub fn setup_wall() {
     const width: f32 = SCREEN_WIDTH;
@@ -180,7 +200,10 @@ fn main() {
             };
             let brick_render = Rectangle::new(new_pos.x, new_pos.y, brick.width, brick.height);
             // brick.position.x = brick.position.x + 10.0;
-            d.draw_rectangle_rec(&brick_render, color::Color::BLACK);
+            if (ball.position.y > new_pos.y + ball.radius) {
+                d.draw_rectangle_rec(&brick_render, color::Color::BLACK);
+                ball.speed.y *= -1.0;
+            }
             wall_count = wall_count - 1;
             prev_pos = new_pos;
         }
