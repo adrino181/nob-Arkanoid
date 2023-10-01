@@ -66,8 +66,31 @@ struct Bar {
     speed: Vector2,
     width: f32,
     height: f32,
+    pub sprite: Texture2D,
 }
-
+impl Bar {
+    pub fn new(rl: &mut RaylibHandle, thread: &RaylibThread, path: &'static str) -> Self {
+        Self {
+            position: Vector2 {
+                x: SCREEN_WIDTH / 2.0,
+                y: 1.0,
+            },
+            speed: Vector2 { x: 0.0, y: 0.0 },
+            width: 100.0,
+            height: 20.0,
+            sprite: rl.load_texture(thread, path).unwrap(),
+        }
+    }
+    pub fn draw(&self, d: &mut RaylibDrawHandle) {
+        // d.draw_texture_v(&self.sprite, &self.position, Color::WHITE);
+        d.draw_texture_rec(
+            &self.sprite,
+            Rectangle::new(0.0, 0.0, 100.0, 15.0),
+            &self.position,
+            Color::WHITE,
+        )
+    }
+}
 struct Ball {
     position: Vector2,
     speed: Vector2,
@@ -78,9 +101,12 @@ fn main() {
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32)
         .title("Hello,ss World")
+        .vsync()
         .build();
 
     rl.set_target_fps(60);
+
+    //let image = rl.load_texture(&thread, "assets/object_data.png").unwrap();
 
     let mut ball = Ball {
         position: Vector2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0),
@@ -88,15 +114,7 @@ fn main() {
         radius: 25.0,
     };
 
-    let mut bar: Bar = Bar {
-        position: Vector2 {
-            x: SCREEN_WIDTH / 2.0,
-            y: 1.0,
-        },
-        speed: Vector2 { x: 0.0, y: 0.0 },
-        width: 100.0,
-        height: 20.0,
-    };
+    let mut bar: Bar = Bar::new(&mut rl, &thread, "assets/bar/bar_2.png");
 
     let brick: Brick = Brick {
         position: Vector2 { x: 0.0, y: 0.0 },
@@ -110,6 +128,10 @@ fn main() {
 
     while !rl.window_should_close() {
         //key controls
+        if !rl.is_window_focused() {
+            pause = true;
+            frame_count = 0;
+        }
         if rl.is_key_pressed(KEY_SPACE) {
             pause = !pause;
         }
@@ -129,18 +151,26 @@ fn main() {
             if ball.position.y >= SCREEN_HEIGHT - ball.radius || ball.position.y <= ball.radius {
                 ball.speed.y *= -1.0;
             }
+
+            // print!("{}{}{}", bar.position.x, "__|__", bar.position.y);
+            if bar.position.y + ball.radius + 10.0 >= ball.position.y {
+                print!("collision");
+                ball.speed.y *= -1.0;
+                // ball.speed.x *= -1.0 / 2.0;
+            }
         } else {
             frame_count += 1;
         }
 
         //draw the main context
         let mut d: RaylibDrawHandle<'_> = rl.begin_drawing(&thread);
-        let rect = Rectangle::new(bar.position.x, bar.position.y, bar.width, bar.height);
+        //let rect: Rectangle = Rectangle::new(bar.position.x, bar.position.y, bar.width, bar.height);
 
         d.clear_background(Color::BEIGE);
         d.draw_circle_v(ball.position, ball.radius, Color::PINK);
-        d.draw_rectangle_rec(&rect, color::Color::YELLOW);
-
+        bar.draw(&mut d);
+        // d.draw_rectangle_rec(&rect, color::Color::YELLOW);
+        // d.draw_texture_v(&image, Vector2::new(1.0, 1.0), Color::WHITE);
         let mut wall_count: i32 = 10;
         let mut prev_pos = Vector2 { x: 0.0, y: 0.0 };
         while wall_count > 0 {
