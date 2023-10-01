@@ -3,7 +3,70 @@ use raylib::prelude::*;
 
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 480.0;
-struct Bar {}
+
+struct Brick {
+    position: Vector2,
+    height: f32,
+    width: f32,
+    pub is_visible: bool,
+}
+
+pub fn drop<T>(_x: T) {}
+
+pub trait BreakOnCollision {
+    fn destory(&self) {
+        drop(self);
+    }
+
+    fn break_wall(&mut self);
+}
+
+impl BreakOnCollision for Brick {
+    fn break_wall(&mut self) {
+        if self.is_visible {
+            self.is_visible = !self.is_visible;
+        }
+    }
+}
+
+struct Wall {
+    wall: Vec<Brick>,
+    position: Vector2,
+}
+
+pub fn setup_wall() {
+    const width: f32 = SCREEN_WIDTH;
+    const height: f32 = SCREEN_HEIGHT;
+    let mut brick: Brick = Brick {
+        position: Vector2 {
+            x: width / 2.0,
+            y: height / 2.0,
+        },
+
+        width: 10.0,
+        height: 10.0,
+        is_visible: true,
+    };
+}
+// pub fn build_wall<T: BreakOnCollision>(item: &T) {
+//     let mut wall_v: Vec<BreakOnCollision>;
+
+//     while (item) {
+//         wall_v.push(item);
+//     }
+//     return wall_v;
+// }
+
+// impl BreakOnCollision for Wall {
+//     fn new(name: &'static str) -> Self;
+// }
+
+struct Bar {
+    position: Vector2,
+    speed: Vector2,
+    width: f32,
+    height: f32,
+}
 
 struct Ball {
     position: Vector2,
@@ -11,15 +74,6 @@ struct Ball {
     radius: f32,
 }
 
-/*
-   @params
-
-*/
-enum Position {
-    X(String),
-    Y(String),
-}
-struct Brick {}
 fn main() {
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32)
@@ -34,16 +88,35 @@ fn main() {
         radius: 25.0,
     };
 
+    let mut bar: Bar = Bar {
+        position: Vector2 {
+            x: SCREEN_WIDTH / 2.0,
+            y: 1.0,
+        },
+        speed: Vector2 { x: 0.0, y: 0.0 },
+        width: 100.0,
+        height: 20.0,
+    };
+
+    let brick: Brick = Brick {
+        position: Vector2 { x: 0.0, y: 0.0 },
+        width: 100.0,
+        height: 20.0,
+        is_visible: true,
+    };
+
     let mut pause = false;
     let mut frame_count = 0;
 
     while !rl.window_should_close() {
         //key controls
-        if (rl.is_key_pressed(KEY_SPACE)) {
+        if rl.is_key_pressed(KEY_SPACE) {
             pause = !pause;
         }
-
-        if (!pause) {
+        if rl.is_key_pressed(KeyboardKey::KEY_RIGHT) {
+            bar.position.x += 10.0;
+        }
+        if !pause {
             ball.position += ball.speed;
 
             if ball.position.x >= SCREEN_WIDTH - ball.radius || ball.position.x <= ball.radius {
@@ -58,9 +131,24 @@ fn main() {
         }
 
         //draw the main context
-        let mut d = rl.begin_drawing(&thread);
+        let mut d: RaylibDrawHandle<'_> = rl.begin_drawing(&thread);
+        let rect = Rectangle::new(bar.position.x, bar.position.y, bar.width, bar.height);
+
+        let brick_render = Rectangle::new(
+            brick.position.x,
+            brick.position.y,
+            brick.width,
+            brick.height,
+        );
         d.clear_background(Color::BEIGE);
         d.draw_circle_v(ball.position, ball.radius, Color::PINK);
+        d.draw_rectangle_rec(&rect, color::Color::YELLOW);
+
+        let mut wall_count: i32 = 10;
+        while wall_count > 0 {
+            d.draw_rectangle_rec(&brick_render, color::Color::BLACK);
+            wall_count = wall_count - 1;
+        }
         d.draw_text(
             "Press SPACE to pause ball movement",
             10,
@@ -83,15 +171,3 @@ fn main() {
         // d.draw_text("Helloss, world!", 12, 12, 20, Color::BLACK);
     }
 }
-
-//use cmake;
-
-// Builds the project in the directory located in `libfoo`, installing it
-// into $OUT_DIR
-
-// fn main() {
-//     let dst = cmake::build("libfoo");
-
-//     println!("cargo:rustc-link-search=native={}", dst.display());
-//     println!("cargo:rustc-link-lib=static=foo");
-// }
