@@ -1,13 +1,27 @@
-use std::collections::VecDeque;
-use std::vec;
-
 use raylib::ffi::KeyboardKey::KEY_SPACE;
-use raylib::ffi::LoadImageFromMemory;
 use raylib::prelude::*;
+use std::{any, fmt, vec};
 
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 480.0;
+const BRICK_WIDTH: f32 = 100.0;
+// Logger function for any type that implements Debug.
+fn log<T: any::Any + fmt::Debug>(value: &T) {
+    let value_any = value as &dyn any::Any;
 
+    // Try to convert our value to a `String`. If successful, we want to
+    // output the `String`'s length as well as its value. If not, it's a
+    // different type: just print it out unadorned.
+    match value_any.downcast_ref::<String>() {
+        Some(as_string) => {
+            println!("String ({}): {}", as_string.len(), as_string);
+        }
+        None => {
+            println!("{value:?}");
+        }
+    }
+}
+#[derive(Copy, Clone, Debug)]
 struct Brick {
     position: Vector2,
     height: f32,
@@ -18,7 +32,7 @@ struct Brick {
 pub fn drop<T>(_x: T) {}
 
 pub trait BreakOnCollision {
-    fn destory(&self) {
+    fn destory(&mut self) {
         drop(self);
     }
 
@@ -36,7 +50,9 @@ impl BreakOnCollision for Brick {
         }
     }
 
-    fn destory(&self) {}
+    fn destory(&mut self) {
+        self.is_visible = !self.is_visible
+    }
 }
 
 // struct Wall {
@@ -93,7 +109,7 @@ impl Bar {
         Self {
             position: Vector2 {
                 x: SCREEN_WIDTH / 2.0,
-                y: 1.0,
+                y: SCREEN_HEIGHT - 20.0,
             },
             speed: Vector2 { x: 0.0, y: 0.0 },
             width: 100.0,
@@ -130,21 +146,36 @@ fn main() {
 
     let mut ball = Ball {
         position: Vector2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0),
-        speed: Vector2::new(4.0, 3.0),
+        speed: Vector2::new(2.0, 4.0),
         radius: 25.0,
     };
 
     let mut bar: Bar = Bar::new(&mut rl, &thread, "assets/bar/bar_2.png");
 
-    let brick: Brick = Brick {
-        position: Vector2 { x: 0.0, y: 0.0 },
-        width: 100.0,
-        height: 20.0,
-        is_visible: true,
-    };
-
     let mut pause = false;
     let mut frame_count = 0;
+
+    let mut wall_count: i32 = 10;
+    let mut prev_pos = Vector2 { x: 0.0, y: 0.0 };
+    let mut brickVec: Vec<Brick> = vec![];
+    let mut brick_horizontal_count = (SCREEN_WIDTH / BRICK_WIDTH) as i64;
+    while wall_count > 0 {
+        let new_pos = Vector2 {
+            x: prev_pos.x + BRICK_WIDTH,
+            y: prev_pos.y + 10.0,
+        };
+        let brick: Brick = Brick {
+            position: new_pos,
+            width: BRICK_WIDTH,
+            height: 20.0,
+            is_visible: true,
+        };
+        let max_x = brick_horizontal_count;
+        let mut wall_run = Vector2::zero();
+        brickVec.push(brick);
+        wall_count = wall_count - 1;
+        prev_pos = new_pos;
+    }
 
     while !rl.window_should_close() {
         //key controls
@@ -163,7 +194,6 @@ fn main() {
         }
         if !pause {
             ball.position += ball.speed;
-
             if ball.position.x >= SCREEN_WIDTH - ball.radius || ball.position.x <= ball.radius {
                 ball.speed.x *= -1.0;
             }
@@ -173,8 +203,7 @@ fn main() {
             }
 
             // print!("{}{}{}", bar.position.x, "__|__", bar.position.y);
-            if bar.position.y + ball.radius + 10.0 >= ball.position.y {
-                print!("collision");
+            if bar.position.y <= ball.position.y + ball.radius {
                 ball.speed.y *= -1.0;
                 // ball.speed.x *= -1.0 / 2.0;
             }
@@ -191,23 +220,33 @@ fn main() {
         bar.draw(&mut d);
         // d.draw_rectangle_rec(&rect, color::Color::YELLOW);
         // d.draw_texture_v(&image, Vector2::new(1.0, 1.0), Color::WHITE);
-        let mut wall_count: i32 = 10;
-        let mut prev_pos = Vector2 { x: 0.0, y: 0.0 };
-        while wall_count > 0 {
-            let new_pos = Vector2 {
-                x: brick.position.x + prev_pos.x + 10.0,
-                y: brick.position.y + prev_pos.y + 10.0,
-            };
-            let brick_render = Rectangle::new(new_pos.x, new_pos.y, brick.width, brick.height);
-            // brick.position.x = brick.position.x + 10.0;
-            if (ball.position.y > new_pos.y + ball.radius) {
-                d.draw_rectangle_rec(&brick_render, color::Color::BLACK);
+        brickVec.retain(|x| {
+            let rectangle = Rectangle::new(x.position.x, x.position.y, BRICK_WIDTH, 10.0);
+            // if x.is_visible {
+            //     d.draw_rectangle_rec(&rectangle, color::Color::BLACK);
+            //     return true;
+            // }
+            let is_collision = rectangle.check_collision_circle_rec(ball.position, ball.radius);
+            if is_collision {
                 ball.speed.y *= -1.0;
+                return false;
             }
-            wall_count = wall_count - 1;
-            prev_pos = new_pos;
-        }
+            d.draw_rectangle_rec(&rectangle, color::Color::BLACK);
+            return true;
+        });
 
+        // for item in &brickVec {
+        //     log(item);
+        //     let rectange = Rectangle::new(item.position.x, item.position.y, BRICK_WIDTH, 10.0);
+        //     if item.is_visible {
+        //         d.draw_rectangle_rec(&rectange, color::Color::BLACK);
+        //     }
+
+        //     if rectange.check_collision_circle_rec(ball.position, ball.radius) {
+        //         ball.speed.y *= -1.0;
+        //         //item.is_visible = false;
+        //     };
+        // }
         d.draw_text(
             "Press SPACE to pause ball movement",
             10,
