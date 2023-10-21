@@ -1,4 +1,4 @@
-use raylib::ffi::KeyboardKey::KEY_SPACE;
+use raylib::ffi::{KeyboardKey::KEY_SPACE, LoadModelAnimations};
 use raylib::prelude::*;
 use std::{any, fmt, vec};
 
@@ -31,6 +31,15 @@ struct Brick {
 
 pub fn drop<T>(_x: T) {}
 
+//Rectangle contains queues of sprite animation
+struct SpriteAnimation {
+    atlas: Texture2D,
+    fps: f32,
+    rectangele: Rectangle,
+    rect_length: i32,
+}
+
+fn DrawSpriteAnimationPro() {}
 pub trait BreakOnCollision {
     fn destory(&mut self) {
         drop(self);
@@ -118,19 +127,62 @@ impl Bar {
         }
     }
     pub fn draw(&self, d: &mut RaylibDrawHandle) {
-        // d.draw_texture_v(&self.sprite, &self.position, Color::WHITE);
         d.draw_texture_rec(
             &self.sprite,
             Rectangle::new(0.0, 0.0, 100.0, 15.0),
             &self.position,
             Color::WHITE,
-        )
+        );
     }
 }
+
 struct Ball {
     position: Vector2,
     speed: Vector2,
     radius: f32,
+    sprite: Texture2D,
+}
+impl Ball {
+    pub fn new(rl: &mut RaylibHandle, thread: &RaylibThread, path: &'static str) -> Self {
+        Self {
+            position: Vector2 {
+                x: SCREEN_WIDTH / 2.0,
+                y: SCREEN_HEIGHT / 2.0,
+            },
+            speed: Vector2 { x: 2.0, y: 2.0 },
+            radius: 10.0,
+            sprite: rl.load_texture(thread, path).unwrap(),
+        }
+    }
+    pub fn draw(&self, d: &mut RaylibDrawHandle, fps_count: i32) {
+        let rec_width = 20.0;
+        let mut sprite_position = fps_count as f32 * rec_width;
+        println!("{}", sprite_position);
+        // d.draw_texture_rec(
+        //     &self.sprite,
+        //     Rectangle::new(0.0, 0.0, 20.0, 20.0),
+        //     &self.position,
+        //     Color::WHITE,
+        // );
+        // d.draw_texture_rec(
+        //     &self.sprite,
+        //     Rectangle::new(20.0, 0.0, 20.0, 20.0),
+        //     &self.position,
+        //     Color::WHITE,
+        // );
+        // d.draw_texture_rec(
+        //     &self.sprite,
+        //     Rectangle::new(40.0, 0.0, 20.0, 20.0),
+        //     &self.position,
+        //     Color::WHITE,
+        // );
+        d.draw_texture_rec(
+            &self.sprite,
+            Rectangle::new(20.0, 0.0, 20.0, 20.0),
+            &self.position,
+            Color::WHITE,
+        );
+    }
 }
 
 fn main() {
@@ -142,39 +194,41 @@ fn main() {
 
     rl.set_target_fps(60);
 
-    //let image = rl.load_texture(&thread, "assets/object_data.png").unwrap();
-
-    let mut ball = Ball {
-        position: Vector2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0),
-        speed: Vector2::new(2.0, 4.0),
-        radius: 25.0,
-    };
-
+    let mut ball: Ball = Ball::new(&mut rl, &thread, "assets/ball/ball_sprite_1.png");
     let mut bar: Bar = Bar::new(&mut rl, &thread, "assets/bar/bar_2.png");
 
-    let mut pause = false;
+    let mut pause: bool = false;
     let mut frame_count = 0;
-
+    let mut score = 0;
     let mut wall_count: i32 = 10;
     let mut prev_pos = Vector2 { x: 0.0, y: 0.0 };
+    //brickVec is wall container
     let mut brickVec: Vec<Brick> = vec![];
-    let mut brick_horizontal_count = (SCREEN_WIDTH / BRICK_WIDTH) as i64;
+    let mut frame_counter = 0;
     while wall_count > 0 {
-        let new_pos = Vector2 {
-            x: prev_pos.x + BRICK_WIDTH,
-            y: prev_pos.y + 10.0,
-        };
-        let brick: Brick = Brick {
-            position: new_pos,
-            width: BRICK_WIDTH,
-            height: 20.0,
-            is_visible: true,
-        };
-        let max_x = brick_horizontal_count;
-        let mut wall_run = Vector2::zero();
-        brickVec.push(brick);
+        let mut brick_horizontal_count: i64 = (SCREEN_WIDTH / BRICK_WIDTH) as i64;
+        let mut count = brick_horizontal_count;
+
+        while count > 0 {
+            println!("{}", count + 1);
+            let new_pos = Vector2 {
+                x: prev_pos.x + BRICK_WIDTH,
+                y: prev_pos.y + 10.0,
+            };
+            count = count - 1;
+
+            let brick: Brick = Brick {
+                position: new_pos,
+                width: BRICK_WIDTH,
+                height: 20.0,
+                is_visible: true,
+            };
+            let max_x = brick_horizontal_count;
+            let mut wall_run = Vector2::zero();
+            brickVec.push(brick);
+            prev_pos = new_pos;
+        }
         wall_count = wall_count - 1;
-        prev_pos = new_pos;
     }
 
     while !rl.window_should_close() {
@@ -207,25 +261,23 @@ fn main() {
                 ball.speed.y *= -1.0;
                 // ball.speed.x *= -1.0 / 2.0;
             }
+
+            score += 1;
         } else {
             frame_count += 1;
         }
 
         //draw the main context
         let mut d: RaylibDrawHandle<'_> = rl.begin_drawing(&thread);
-        //let rect: Rectangle = Rectangle::new(bar.position.x, bar.position.y, bar.width, bar.height);
-
         d.clear_background(Color::BEIGE);
-        d.draw_circle_v(ball.position, ball.radius, Color::PINK);
+
+        frame_counter = (frame_counter + 1) % 5;
+        ball.draw(&mut d, frame_counter as i32);
         bar.draw(&mut d);
-        // d.draw_rectangle_rec(&rect, color::Color::YELLOW);
-        // d.draw_texture_v(&image, Vector2::new(1.0, 1.0), Color::WHITE);
+
+        //Removes brick from brickVec
         brickVec.retain(|x| {
             let rectangle = Rectangle::new(x.position.x, x.position.y, BRICK_WIDTH, 10.0);
-            // if x.is_visible {
-            //     d.draw_rectangle_rec(&rectangle, color::Color::BLACK);
-            //     return true;
-            // }
             let is_collision = rectangle.check_collision_circle_rec(ball.position, ball.radius);
             if is_collision {
                 ball.speed.y *= -1.0;
@@ -235,18 +287,6 @@ fn main() {
             return true;
         });
 
-        // for item in &brickVec {
-        //     log(item);
-        //     let rectange = Rectangle::new(item.position.x, item.position.y, BRICK_WIDTH, 10.0);
-        //     if item.is_visible {
-        //         d.draw_rectangle_rec(&rectange, color::Color::BLACK);
-        //     }
-
-        //     if rectange.check_collision_circle_rec(ball.position, ball.radius) {
-        //         ball.speed.y *= -1.0;
-        //         //item.is_visible = false;
-        //     };
-        // }
         d.draw_text(
             "Press SPACE to pause ball movement",
             10,
@@ -265,7 +305,6 @@ fn main() {
             );
         }
 
-        d.draw_fps(10, 10);
-        // d.draw_text("Helloss, world!", 12, 12, 20, Color::BLACK);
+        d.draw_text(&score.to_string(), 10, 10, 30, Color::WHITE)
     }
 }
