@@ -1,9 +1,14 @@
+mod equipment;
+use ball::Ball;
+use bar::Bar;
+use brick::Brick;
+use equipment::{ball, bar, brick};
 use raylib::ffi::{KeyboardKey::KEY_SPACE, LoadModelAnimations};
 use raylib::prelude::*;
 use std::{any, fmt, vec};
 
-const SCREEN_WIDTH: f32 = 640.0;
-const SCREEN_HEIGHT: f32 = 480.0;
+pub const SCREEN_WIDTH: f32 = 640.0;
+pub const SCREEN_HEIGHT: f32 = 480.0;
 const BRICK_WIDTH: f32 = 100.0;
 // Logger function for any type that implements Debug.
 fn log<T: any::Any + fmt::Debug>(value: &T) {
@@ -21,13 +26,6 @@ fn log<T: any::Any + fmt::Debug>(value: &T) {
         }
     }
 }
-#[derive(Copy, Clone, Debug)]
-struct Brick {
-    position: Vector2,
-    height: f32,
-    width: f32,
-    pub is_visible: bool,
-}
 
 pub fn drop<T>(_x: T) {}
 
@@ -40,30 +38,6 @@ struct SpriteAnimation {
 }
 
 fn DrawSpriteAnimationPro() {}
-pub trait BreakOnCollision {
-    fn destory(&mut self) {
-        drop(self);
-    }
-
-    fn break_wall(&mut self);
-}
-
-pub trait ClubHorizontal {
-    fn club(&mut self);
-}
-
-impl BreakOnCollision for Brick {
-    fn break_wall(&mut self) {
-        if self.is_visible {
-            self.is_visible = !self.is_visible;
-        }
-    }
-
-    fn destory(&mut self) {
-        self.is_visible = !self.is_visible
-    }
-}
-
 // struct Wall {
 //     pub brick_container: Vec<Brick>,
 //     position: Vector2,
@@ -106,96 +80,17 @@ pub fn setup_wall() {
 //     fn new(name: &'static str) -> Self;
 // }
 
-struct Bar {
-    position: Vector2,
-    speed: Vector2,
-    width: f32,
-    height: f32,
-    pub sprite: Texture2D,
-}
-impl Bar {
-    pub fn new(rl: &mut RaylibHandle, thread: &RaylibThread, path: &'static str) -> Self {
-        Self {
-            position: Vector2 {
-                x: SCREEN_WIDTH / 2.0,
-                y: SCREEN_HEIGHT - 20.0,
-            },
-            speed: Vector2 { x: 0.0, y: 0.0 },
-            width: 100.0,
-            height: 20.0,
-            sprite: rl.load_texture(thread, path).unwrap(),
-        }
-    }
-    pub fn draw(&self, d: &mut RaylibDrawHandle) {
-        d.draw_texture_rec(
-            &self.sprite,
-            Rectangle::new(0.0, 0.0, 100.0, 15.0),
-            &self.position,
-            Color::WHITE,
-        );
-    }
-}
-
-struct Ball {
-    position: Vector2,
-    speed: Vector2,
-    radius: f32,
-    sprite: Texture2D,
-}
-impl Ball {
-    pub fn new(rl: &mut RaylibHandle, thread: &RaylibThread, path: &'static str) -> Self {
-        Self {
-            position: Vector2 {
-                x: SCREEN_WIDTH / 2.0,
-                y: SCREEN_HEIGHT / 2.0,
-            },
-            speed: Vector2 { x: 2.0, y: 2.0 },
-            radius: 10.0,
-            sprite: rl.load_texture(thread, path).unwrap(),
-        }
-    }
-    pub fn draw(&self, d: &mut RaylibDrawHandle, fps_count: i32) {
-        let rec_width = 20.0;
-        let mut sprite_position = fps_count as f32 * rec_width;
-        println!("{}", sprite_position);
-        // d.draw_texture_rec(
-        //     &self.sprite,
-        //     Rectangle::new(0.0, 0.0, 20.0, 20.0),
-        //     &self.position,
-        //     Color::WHITE,
-        // );
-        // d.draw_texture_rec(
-        //     &self.sprite,
-        //     Rectangle::new(20.0, 0.0, 20.0, 20.0),
-        //     &self.position,
-        //     Color::WHITE,
-        // );
-        // d.draw_texture_rec(
-        //     &self.sprite,
-        //     Rectangle::new(40.0, 0.0, 20.0, 20.0),
-        //     &self.position,
-        //     Color::WHITE,
-        // );
-        d.draw_texture_rec(
-            &self.sprite,
-            Rectangle::new(20.0, 0.0, 20.0, 20.0),
-            &self.position,
-            Color::WHITE,
-        );
-    }
-}
-
 fn main() {
     let (mut rl, thread) = raylib::init()
         .size(SCREEN_WIDTH as i32, SCREEN_HEIGHT as i32)
-        .title("Hello,ss World")
+        .title("Arknoid")
         .vsync()
         .build();
 
     rl.set_target_fps(60);
 
-    let mut ball: Ball = Ball::new(&mut rl, &thread, "assets/ball/ball_sprite_1.png");
-    let mut bar: Bar = Bar::new(&mut rl, &thread, "assets/bar/bar_2.png");
+    let mut ball: Ball = Ball::new(&mut rl, &thread, "../assets/ball/ball_sprite_1.png");
+    let mut bar: Bar = Bar::new(&mut rl, &thread, "../assets/bar/bar_2.png");
 
     let mut pause: bool = false;
     let mut frame_count = 0;
